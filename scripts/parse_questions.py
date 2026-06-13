@@ -48,6 +48,15 @@ def question_looks_complete(text: str) -> bool:
     return bool(re.search(r"[:?？]\s*$", t))
 
 
+def is_labeled_option_line(text: str) -> bool:
+    t = text.strip()
+    if not t:
+        return False
+    if OPTION_START.match(t):
+        return True
+    return bool(split_option_line(t))
+
+
 def split_option_line(line: str) -> list[tuple[str, str]]:
     """Tách dòng kiểu 'b. nô lệ. c. phong kiến.' thành nhiều phương án."""
     line = line.strip()
@@ -227,8 +236,70 @@ def pick_answer(question: str, options: list[dict], bold_map: dict | None) -> li
         if len(winners) == 1:
             return winners
 
-    # Không đoán bừa — nếu không có bold, lấy phương án composite hoặc để trống
-    return [options[0]["key"]]
+    return [options[0]["key"]] if options else []
+
+
+def option_looks_like_question_fragment(option_text: str, question_text: str) -> bool:
+    """Phát hiện phần câu hỏi bị tách nhầm thành phương án a."""
+    t = normalize(option_text)
+    if not t.endswith("?"):
+        return False
+    if question_looks_complete(question_text):
+        return False
+    if is_labeled_option_line(t):
+        return False
+    if re.match(r"^(đúng|sai)\.?", t, re.I):
+        return False
+    return True
+
+
+def fix_question_fragment_options(q: dict) -> None:
+    """Gộp phương án a dạng '...?' còn sót của câu hỏi trở lại question."""
+    while q["options"]:
+        first = q["options"][0]
+        if not option_looks_like_question_fragment(first["text"], q["question"]):
+            break
+        q["question"] = normalize(q["question"] + " " + first["text"])
+        remaining = q["options"][1:]
+        rekey = {o["key"]: OPTION_LETTERS[idx] for idx, o in enumerate(remaining)}
+        for o in remaining:
+            o["key"] = rekey[o["key"]]
+        q["options"] = remaining
+        q["correctAnswers"] = [
+            rekey[a] for a in q.get("correctAnswers") or [] if a in rekey
+        ]
+
+
+def next_nonempty_para(paras, idx: int) -> int:
+    while idx < len(paras) and not paras[idx].text.strip():
+        idx += 1
+    return idx
+
+
+def collect_short_answer_options(
+    paras, i: int, question_text: str, options: list[dict], bold_map: dict[str, bool], opt_idx: int
+) -> tuple[int, int]:
+    """Câu hỏi ngắn: các dòng liên tiếp không có a/b/c → gán a,b,c,d; in đậm = đúng."""
+    while i < len(paras) and opt_idx < len(OPTION_LETTERS):
+        nxt = paras[i].text.strip()
+        if not nxt:
+            i += 1
+            continue
+        if is_question_line(nxt) or CHAPTER.match(nxt):
+            break
+        if is_labeled_option_line(nxt):
+            break
+        run_map = bold_map_from_paragraph(paras[i])
+        marked = run_map.get("__all__", False) or para_is_marked(paras[i])
+        if not should_assign_unlabeled_option(nxt, marked, question_text):
+            break
+        key = OPTION_LETTERS[opt_idx]
+        options.append({"key": key, "text": trim_embedded_question(normalize(nxt))})
+        bold_map[key] = marked
+        opt_idx += 1
+        i += 1
+        i = append_option_continuations(paras, i, options)
+    return i, opt_idx
 
 
 def para_is_marked(para) -> bool:
@@ -304,18 +375,25 @@ def extract_inline_options(question_text: str) -> tuple[str, list[tuple[str, str
     return q_part, opts
 
 
-def should_assign_unlabeled_option(text: str, marked: bool) -> bool:
-    """File [2]: phương án không có a/b/c — chỉ gán khi là dòng đáp án độc lập."""
+def should_assign_unlabeled_option(text: str, marked: bool, question_text: str = "") -> bool:
+    """Dòng không có a/b/c — chỉ coi là đáp án khi câu hỏi đã hoàn chỉnh."""
     if marked:
-        return True
+        pass
+    elif not marked:
+        # Dòng phương án nhiễu thường vẫn có chữ hoa đầu; dòng nối câu hỏi thì thường thường
+        pass
     t = text.strip()
     if not t or is_question_line(t):
         return False
-    if OPTION_START.match(t) or split_option_line(t):
+    if is_labeled_option_line(t):
+        return False
+    if question_text and not question_looks_complete(question_text):
         return False
     if t[0].islower() or t[0] == "đ":
         return False
-    return len(t) >= 4
+    if len(t) < 4:
+        return False
+    return marked or t[0].isupper() or t[0] in "Đ"
 
 
 def parse_text_block(text: str, chapter: str, source: str) -> list[dict]:
@@ -464,27 +542,15 @@ def parse_docx(path: Path) -> list[dict]:
                 continue
             if is_question_line(nxt) or CHAPTER.match(nxt):
                 break
-            if OPTION_START.match(nxt):
+            if is_labeled_option_line(nxt):
                 break
-            if split_option_line(nxt):
-                break
-            if question_looks_complete(question_text):
-                if should_assign_unlabeled_option(nxt, para_is_marked(paras[i])):
-                    break
-            if para_is_marked(paras[i]):
-                break
-            if len(nxt) < 80:
-                nxt_lower = nxt[0].islower() if nxt else False
-                if not nxt_lower:
-                    peek = i + 1
-                    while peek < len(paras) and not paras[peek].text.strip():
-                        peek += 1
-                    if peek < len(paras) and (
-                        para_is_marked(paras[peek]) or OPTION_START.match(paras[peek].text.strip())
-                    ):
-                        break
-            question_text += " " + nxt
-            i += 1
+            # Câu hỏi chưa xong: gộp cả dòng in đậm (nhấn mạnh trong đề)
+            if not question_looks_complete(question_text):
+                question_text += " " + nxt
+                i += 1
+                continue
+            # Câu hỏi đã đủ — dừng trước khối đáp án
+            break
 
         question_text, inline_opts = extract_inline_options(question_text)
         options: list[dict] = []
@@ -494,66 +560,63 @@ def parse_docx(path: Path) -> list[dict]:
             bold_map[key] = False
         opt_idx = len(options)
 
-        while i < len(paras):
-            nxt = paras[i].text.strip()
-            if not nxt:
-                i += 1
-                continue
-            if is_question_line(nxt) or CHAPTER.match(nxt):
-                break
+        peek = next_nonempty_para(paras, i)
+        short_answer_mode = (
+            peek >= len(paras) or not is_labeled_option_line(paras[peek].text.strip())
+        )
 
-            om = OPTION_START.match(nxt)
-            if om:
-                append_options_from_line(
-                    options, bold_map, nxt, para_is_marked(paras[i]), paras[i]
-                )
-                i += 1
-                if options:
-                    opt_idx = max(
-                        opt_idx,
-                        OPTION_LETTERS.index(options[-1]["key"]) + 1,
-                    )
-                i = append_option_continuations(paras, i, options)
-                continue
-
-            if opt_idx >= len(OPTION_LETTERS):
-                break
-
-            if is_question_line(nxt):
-                break
-
-            inline = split_option_line(nxt)
-            if inline:
-                append_options_from_line(
-                    options, bold_map, nxt, para_is_marked(paras[i]), paras[i]
-                )
-                i += 1
-                if options:
-                    opt_idx = max(
-                        opt_idx,
-                        OPTION_LETTERS.index(options[-1]["key"]) + 1,
-                    )
-                i = append_option_continuations(paras, i, options)
-                continue
-
-            marked = bold_map_from_paragraph(paras[i]).get(
-                "__all__", para_is_marked(paras[i])
+        if short_answer_mode and question_looks_complete(question_text):
+            i, opt_idx = collect_short_answer_options(
+                paras, i, question_text, options, bold_map, opt_idx
             )
-            if not should_assign_unlabeled_option(nxt, marked):
-                i += 1
-                continue
+        else:
+            while i < len(paras):
+                nxt = paras[i].text.strip()
+                if not nxt:
+                    i += 1
+                    continue
+                if is_question_line(nxt) or CHAPTER.match(nxt):
+                    break
 
-            key = OPTION_LETTERS[opt_idx]
-            options.append({"key": key, "text": trim_embedded_question(normalize(nxt))})
-            bold_map[key] = marked
-            opt_idx += 1
-            i += 1
-            i = append_option_continuations(paras, i, options)
+                om = OPTION_START.match(nxt)
+                if om:
+                    append_options_from_line(
+                        options, bold_map, nxt, para_is_marked(paras[i]), paras[i]
+                    )
+                    i += 1
+                    if options:
+                        opt_idx = max(
+                            opt_idx,
+                            OPTION_LETTERS.index(options[-1]["key"]) + 1,
+                        )
+                    i = append_option_continuations(paras, i, options)
+                    continue
+
+                if opt_idx >= len(OPTION_LETTERS):
+                    break
+
+                inline = split_option_line(nxt)
+                if inline:
+                    append_options_from_line(
+                        options, bold_map, nxt, para_is_marked(paras[i]), paras[i]
+                    )
+                    i += 1
+                    if options:
+                        opt_idx = max(
+                            opt_idx,
+                            OPTION_LETTERS.index(options[-1]["key"]) + 1,
+                        )
+                    i = append_option_continuations(paras, i, options)
+                    continue
+
+                break
 
         if len(options) < 2:
             continue
 
         answers = pick_answer(question_text, options, bold_map)
+        if not answers and options and not any(bold_map.values()):
+            answers = pick_answer(question_text, options, None)
         questions.append(
             {
                 "id": f"{source_slug}_{q_id}_{len(questions)}",
@@ -597,6 +660,7 @@ def dedupe_options(options: list[dict]) -> list[dict]:
 
 def post_process_options(questions: list[dict]) -> None:
     for q in questions:
+        fix_question_fragment_options(q)
         fixed: list[dict] = []
         for opt in q["options"]:
             parts = split_option_line(f"{opt['key']}. {opt['text']}")
@@ -610,6 +674,8 @@ def post_process_options(questions: list[dict]) -> None:
                     fixed.append({"key": key, "text": text})
         q["options"] = dedupe_options(fixed)
         q["correctAnswers"] = list(dict.fromkeys(q.get("correctAnswers") or []))
+        if not q["correctAnswers"] and q["options"]:
+            q["correctAnswers"] = pick_answer(q["question"], q["options"], None)
 
 
 def post_process_yes_no(questions: list[dict]) -> None:
@@ -628,6 +694,9 @@ def post_process_yes_no(questions: list[dict]) -> None:
 
 
 def main():
+    import sys
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     all_q: list[dict] = []
     stats: list[str] = []
 

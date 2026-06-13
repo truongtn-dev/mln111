@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from parse_questions import parse_docx, split_option_line, normalize, QUESTION_START
+from parse_questions import parse_docx, split_option_line, normalize, QUESTION_START, option_looks_like_question_fragment
 
 OUTPUT = ROOT / "data" / "questions.json"
 
@@ -47,6 +47,12 @@ def audit_question(q: dict) -> list[str]:
     if q["type"] == "multiple_choice" and len(opts) < 4:
         issues.append(f"only_{len(opts)}_options")
 
+    if not q.get("correctAnswers"):
+        issues.append("missing_answer")
+
+    if q["options"] and option_looks_like_question_fragment(q["options"][0]["text"], q["question"]):
+        issues.append("question_fragment_in_option_a")
+
     if q["type"] == "multiple_choice" and len(opts) > 5:
         issues.append(f"too_many_{len(opts)}_options")
 
@@ -65,6 +71,9 @@ def count_questions_in_docx(path: Path) -> int:
 
 
 def main():
+    import sys
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     docx_files = sorted(p for p in ROOT.glob("*.docx") if not p.name.startswith("~$"))
     all_parsed: list[dict] = []
     print("=== Nguồn docx ===")
