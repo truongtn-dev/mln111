@@ -95,11 +95,16 @@ export default function Exam({ allQuestions, onFinish, onBack }) {
       <div className="question-card">
         <div className="question-meta">
           <span className={`q-badge ${q.type === 'yes_no' ? 'yn' : 'mc'}`}>
-            {q.type === 'yes_no' ? 'Đúng / Sai' : 'Trắc nghiệm'}
+            {q.type === 'yes_no' ? 'Đúng / Sai' : q.correctAnswers.length > 1 ? `Trắc nghiệm · ${q.correctAnswers.length} đáp án` : 'Trắc nghiệm'}
           </span>
           <span className="q-number">Câu {current + 1} / {questions.length}</span>
         </div>
         <p className="question-text">{q.question}</p>
+        {q.correctAnswers.length > 1 && (
+          <p className="multi-select-hint">
+            Chọn {q.correctAnswers.length} đáp án · Đã chọn {selected.length}/{q.correctAnswers.length}
+          </p>
+        )}
         <div className="options-list">
           {q.options.map((opt) => (
             <button

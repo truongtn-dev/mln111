@@ -212,7 +212,7 @@ export default function StudyHub({ questions, onBack }) {
       <div className="card study-tips">
         <BookOpen size={20} color="#ffd166" />
         <div>
-          <h4>Mẹo nhớ lâu (như Quizlet)</h4>
+          <h4>Mẹo nhớ lâu</h4>
           <ul>
             <li><strong>Thẻ:</strong> Tự nhớ trước khi lật — active recall mạnh nhất.</li>
             <li><strong>Học:</strong> Hệ thống ưu tiên câu sai & câu mới (spaced repetition).</li>

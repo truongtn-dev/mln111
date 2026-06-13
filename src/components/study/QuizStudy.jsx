@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { ChevronLeft, CheckCircle, Trophy } from 'lucide-react'
-import { shuffle, checkAnswer, getAnswerText } from '../../utils'
+import { shuffle, checkAnswer, getAnswerText, isMultiSelect } from '../../utils'
 import { buildLearnQueue, markQuizResult, getStats, loadProgress } from '../../study/progress'
 import Footer from '../Footer'
 
@@ -10,17 +10,19 @@ export default function QuizStudy({ questions, progress, onProgress, onBack }) {
   const [quiz] = useState(() => buildLearnQueue(questions, progress, QUIZ_SIZE))
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState({})
+  const [pending, setPending] = useState([])
   const [finished, setFinished] = useState(false)
 
   const q = quiz[index]
+  const multi = q ? isMultiSelect(q) : false
   const shuffledOpts = useMemo(() => (q ? shuffle(q.options) : []), [q?.id])
 
-  const handlePick = (key) => {
-    if (answers[q.id] !== undefined) return
-    const next = { ...answers, [q.id]: key }
+  const finalize = (picked) => {
+    const next = { ...answers, [q.id]: picked }
     setAnswers(next)
-    const ok = checkAnswer(q, [key])
+    const ok = checkAnswer(q, picked)
     onProgress((prev) => markQuizResult(prev, q.id, ok))
+    setPending([])
 
     if (index >= quiz.length - 1) {
       setTimeout(() => setFinished(true), 400)
@@ -29,10 +31,26 @@ export default function QuizStudy({ questions, progress, onProgress, onBack }) {
     }
   }
 
+  const handlePick = (key) => {
+    if (answers[q.id] !== undefined) return
+    if (multi) {
+      setPending((prev) =>
+        prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+      )
+      return
+    }
+    finalize([key])
+  }
+
+  const handleConfirm = () => {
+    if (!multi || pending.length !== q.correctAnswers.length) return
+    finalize(pending)
+  }
+
   const results = useMemo(() => {
     let correct = 0
     quiz.forEach((item) => {
-      if (checkAnswer(item, [answers[item.id]])) correct++
+      if (checkAnswer(item, answers[item.id])) correct++
     })
     return { correct, total: quiz.length, pct: Math.round((correct / quiz.length) * 100) }
   }, [quiz, answers, finished])
@@ -55,7 +73,7 @@ export default function QuizStudy({ questions, progress, onProgress, onBack }) {
           <p>Tiến độ học: <strong>{stats.pct}%</strong> đã thuộc ({stats.mastered}/{stats.total})</p>
           <div className="quiz-review-list">
             {quiz.map((item, i) => {
-              const ok = checkAnswer(item, [answers[item.id]])
+              const ok = checkAnswer(item, answers[item.id])
               return (
                 <div key={item.id} className={`review-item ${ok ? 'correct' : 'wrong'}`}>
                   <div className="review-q">{i + 1}. {item.question}</div>
@@ -90,12 +108,19 @@ export default function QuizStudy({ questions, progress, onProgress, onBack }) {
 
       <div className="question-card">
         <p className="question-text">{q.question}</p>
+        {multi && picked === undefined && (
+          <p className="multi-select-hint">
+            Chọn đủ {q.correctAnswers.length} đáp án rồi bấm Xác nhận ({pending.length}/{q.correctAnswers.length})
+          </p>
+        )}
         <div className="options-list">
           {shuffledOpts.map((opt) => {
             let cls = 'option-btn'
             if (picked !== undefined) {
               if (q.correctAnswers.includes(opt.key)) cls += ' correct'
-              else if (picked === opt.key) cls += ' wrong'
+              else if (picked.includes(opt.key)) cls += ' wrong'
+            } else if (pending.includes(opt.key)) {
+              cls += ' selected'
             }
             return (
               <button
@@ -113,6 +138,18 @@ export default function QuizStudy({ questions, progress, onProgress, onBack }) {
             )
           })}
         </div>
+        {multi && picked === undefined && (
+          <div className="actions-center multi-confirm-row">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={pending.length !== q.correctAnswers.length}
+              onClick={handleConfirm}
+            >
+              Xác nhận ({pending.length}/{q.correctAnswers.length})
+            </button>
+          </div>
+        )}
       </div>
 
       <Footer />

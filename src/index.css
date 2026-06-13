@@ -279,6 +279,13 @@ button { cursor: pointer; border: none; background: none; }
 .q-badge.yn { background: var(--accent-soft); color: var(--accent); }
 .q-number { font-size: 0.8rem; color: var(--text-muted); }
 .question-text { font-size: 1.05rem; font-weight: 500; line-height: 1.65; margin-bottom: 24px; }
+.multi-select-hint {
+  font-size: 0.82rem;
+  color: var(--accent);
+  margin: -12px 0 16px;
+  font-weight: 600;
+}
+.multi-confirm-row { margin-top: 16px; }
 
 .options-list { display: flex; flex-direction: column; gap: 10px; }
 .option-btn {

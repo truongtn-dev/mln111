@@ -1,17 +1,18 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ChevronLeft, CheckCircle, XCircle, ArrowRight } from 'lucide-react'
-import { shuffle, checkAnswer, getAnswerText } from '../../utils'
+import { shuffle, checkAnswer, getAnswerText, isMultiSelect } from '../../utils'
 import { buildLearnQueue, markQuizResult, getStats } from '../../study/progress'
 import Footer from '../Footer'
 
 export default function LearnStudy({ questions, progress, onProgress, onBack }) {
   const [queue] = useState(() => buildLearnQueue(questions, progress, 25))
   const [index, setIndex] = useState(0)
-  const [selected, setSelected] = useState(null)
+  const [selected, setSelected] = useState([])
   const [revealed, setRevealed] = useState(false)
   const [session, setSession] = useState({ correct: 0, wrong: 0 })
 
   const q = queue[index]
+  const multi = q ? isMultiSelect(q) : false
   const shuffledOpts = useMemo(
     () => (q ? shuffle(q.options) : []),
     [q?.id]
@@ -19,11 +20,11 @@ export default function LearnStudy({ questions, progress, onProgress, onBack }) 
 
   const stats = getStats(questions, progress)
 
-  const handlePick = (key) => {
+  const finalize = (picked) => {
     if (revealed || !q) return
-    setSelected(key)
+    setSelected(picked)
     setRevealed(true)
-    const ok = checkAnswer(q, [key])
+    const ok = checkAnswer(q, picked)
     onProgress((prev) => markQuizResult(prev, q.id, ok))
     setSession((s) => ({
       correct: s.correct + (ok ? 1 : 0),
@@ -31,10 +32,26 @@ export default function LearnStudy({ questions, progress, onProgress, onBack }) 
     }))
   }
 
+  const handlePick = (key) => {
+    if (revealed || !q) return
+    if (multi) {
+      setSelected((prev) =>
+        prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+      )
+      return
+    }
+    finalize([key])
+  }
+
+  const handleConfirm = () => {
+    if (!multi || selected.length !== q.correctAnswers.length) return
+    finalize(selected)
+  }
+
   const next = () => {
     if (index >= queue.length - 1) return
     setIndex((i) => i + 1)
-    setSelected(null)
+    setSelected([])
     setRevealed(false)
   }
 
@@ -85,17 +102,22 @@ export default function LearnStudy({ questions, progress, onProgress, onBack }) 
           <div className="question-card learn-card">
             <div className="question-meta">
               <span className={`q-badge ${q.type === 'yes_no' ? 'yn' : 'mc'}`}>
-                {q.type === 'yes_no' ? 'Đ/S' : 'TN'}
+                {q.type === 'yes_no' ? 'Đ/S' : multi ? `TN · ${q.correctAnswers.length} đáp án` : 'TN'}
               </span>
             </div>
             <p className="question-text">{q.question}</p>
+            {multi && !revealed && (
+              <p className="multi-select-hint">
+                Chọn đủ {q.correctAnswers.length} đáp án rồi bấm Xác nhận ({selected.length}/{q.correctAnswers.length})
+              </p>
+            )}
             <div className="options-list">
               {shuffledOpts.map((opt) => {
                 let cls = 'option-btn'
                 if (revealed) {
                   if (q.correctAnswers.includes(opt.key)) cls += ' correct'
-                  else if (selected === opt.key) cls += ' wrong'
-                } else if (selected === opt.key) cls += ' selected'
+                  else if (selected.includes(opt.key)) cls += ' wrong'
+                } else if (selected.includes(opt.key)) cls += ' selected'
 
                 return (
                   <button
@@ -107,16 +129,28 @@ export default function LearnStudy({ questions, progress, onProgress, onBack }) 
                     <span className="option-key">{opt.key}</span>
                     <span className="option-text">{opt.text}</span>
                     {revealed && q.correctAnswers.includes(opt.key) && <CheckCircle size={18} color="#06d6a0" />}
-                    {revealed && selected === opt.key && !q.correctAnswers.includes(opt.key) && (
+                    {revealed && selected.includes(opt.key) && !q.correctAnswers.includes(opt.key) && (
                       <XCircle size={18} color="#ef476f" />
                     )}
                   </button>
                 )
               })}
             </div>
+            {!revealed && multi && (
+              <div className="actions-center multi-confirm-row">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={selected.length !== q.correctAnswers.length}
+                  onClick={handleConfirm}
+                >
+                  Xác nhận ({selected.length}/{q.correctAnswers.length})
+                </button>
+              </div>
+            )}
             {revealed && (
-              <div className={`learn-feedback ${checkAnswer(q, [selected]) ? 'ok' : 'bad'}`}>
-                {checkAnswer(q, [selected]) ? (
+              <div className={`learn-feedback ${checkAnswer(q, selected) ? 'ok' : 'bad'}`}>
+                {checkAnswer(q, selected) ? (
                   <><CheckCircle size={18} /> Chính xác! Streak tăng.</>
                 ) : (
                   <><XCircle size={18} /> Sai rồi — đáp án: <strong>{getAnswerText(q)}</strong></>

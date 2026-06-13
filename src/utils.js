@@ -25,6 +25,10 @@ export function checkAnswer(question, selected) {
   return selected.every((k) => correct.includes(k))
 }
 
+export function isMultiSelect(question) {
+  return question.correctAnswers.length > 1
+}
+
 export function getOptionLabel(options, key) {
   const opt = options.find((o) => o.key === key)
   return opt ? `${key.toUpperCase()}. ${opt.text}` : key.toUpperCase()
