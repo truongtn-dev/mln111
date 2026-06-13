@@ -282,7 +282,7 @@ button { cursor: pointer; border: none; background: none; }
 
 .options-list { display: flex; flex-direction: column; gap: 10px; }
 .option-btn {
-  display: flex; align-items: flex-start; gap: 14px; width: 100%; padding: 14px 18px;
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 18px;
   background: var(--bg-elevated); border: 1.5px solid var(--border); border-radius: var(--radius-sm);
   text-align: left; color: var(--text); transition: all 0.15s;
 }
@@ -295,7 +295,8 @@ button { cursor: pointer; border: none; background: none; }
   display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;
 }
 .option-btn.selected .option-key { background: var(--primary); color: white; }
-.option-text { font-size: 0.925rem; line-height: 1.5; padding-top: 4px; }
+.option-text { flex: 1; min-width: 0; font-size: 0.925rem; line-height: 1.5; text-align: left; }
+.option-btn > svg { margin-left: auto; flex-shrink: 0; }
 
 .nav-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .question-dots { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 20px 0; max-height: 80px; overflow-y: auto; }
@@ -718,7 +719,6 @@ button { cursor: pointer; border: none; background: none; }
 .learn-progress-title { font-weight: 700; font-size: 0.9rem; }
 .learn-progress-sub { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
 
-.learn-card .option-btn { justify-content: space-between; }
 .learn-feedback {
   margin-top: 16px; padding: 12px 16px; border-radius: var(--radius-sm);
   display: flex; align-items: center; gap: 8px; font-size: 0.875rem;
