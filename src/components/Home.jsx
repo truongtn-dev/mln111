@@ -21,11 +21,11 @@ export default function Home({ questions, examPool, meta, history, onStartFlashc
         <div className="home-hero-glow" aria-hidden />
         <div className="home-hero-content">
           <span className="home-hero-badge">
-            <Sparkles size={14} /> Bộ câu Quizlet · NHUNG HOÀNG
+            <Sparkles size={14} /> Bộ câu Quizlet
           </span>
           <h2 className="home-hero-title">{meta?.title || 'MLN111'}</h2>
           <p className="home-hero-desc">
-            Ôn đủ <strong>{questions.length}</strong> câu từ bộ Quizlet NHUNG HOÀNG — học flashcard thông minh
+            Ôn đủ <strong>{questions.length}</strong> câu từ bộ Quizlet — học flashcard thông minh
             hoặc thi thử <strong>60 câu / 90 phút</strong> (trộn từ {mc} câu trắc nghiệm).
           </p>
           <div className="home-hero-actions">

@@ -6,7 +6,7 @@ Quizlet chặn bot (PerimeterX) và bộ riêng tư yêu cầu đăng nhập + t
 Không thể "bypass" quyền riêng tư — cần tài khoản đã được duyệt vào lớp.
 
 Cách làm (bộ MLN111 riêng tư):
-  1. Mở Chrome debug, đăng nhập Quizlet, xin vào lớp "MLN111 - NHUNG HOÀNG"
+  1. Mở Chrome debug, đăng nhập Quizlet, xin vào lớp "MLN111"
   2. Mở link bộ thẻ — phải thấy nội dung flashcard (không phải trang "riêng tư")
   3. Chạy script với --connect 9222
 
@@ -86,7 +86,7 @@ def detect_access_block(driver) -> str | None:
     if any(m in visible for m in PRIVATE_MARKERS):
         return (
             "Bộ thẻ đang ở CHẾ ĐỘ RIÊNG TƯ — chỉ thành viên lớp Quizlet mới xem được.\n"
-            "  → Đăng nhập Quizlet bằng tài khoản đã được duyệt vào lớp (vd. MLN111 - NHUNG HOÀNG).\n"
+            "  → Đăng nhập Quizlet bằng tài khoản đã được duyệt vào lớp (vd. MLN111).\n"
             "  → Mở lại link bộ thẻ; phải thấy flashcard thật, không phải trang 'riêng tư'.\n"
             "  → Chạy lại: python scripts/fetch_quizlet.py <url> --connect 9222"
         )
@@ -845,7 +845,7 @@ def main() -> int:
                 parser.print_help()
                 print("\nBộ MLN111 là RIÊNG TƯ — cần đăng nhập + vào lớp trước:")
                 print('  1. chrome.exe --remote-debugging-port=9222 --user-data-dir="%LOCALAPPDATA%\\ChromeDebug"')
-                print("  2. Đăng nhập Quizlet → xin vào lớp MLN111 - NHUNG HOÀNG")
+                print("  2. Đăng nhập Quizlet → xin vào lớp MLN111")
                 print("  3. Mở link bộ thẻ, thấy flashcard thật")
                 print('  4. python scripts/fetch_quizlet.py "URL" --connect 9222 -o data/quizlet_mln111.json')
                 return 1

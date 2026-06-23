@@ -133,7 +133,7 @@ def main() -> int:
 
     payload = {
         "meta": {
-            "title": meta.get("title", "MLN111 - CHUẨN NHUNG HOÀNG"),
+            "title": meta.get("title", "MLN111 - CHUẨN"),
             "total": len(questions),
             "multiple_choice": mc,
             "yes_no": yn,
