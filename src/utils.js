@@ -8,8 +8,15 @@ export function shuffle(arr) {
 }
 
 export function pickExamQuestions(all, count = 60) {
-  const shuffled = shuffle(all)
-  return shuffled.slice(0, Math.min(count, shuffled.length))
+  const pool = all.filter(
+    (q) =>
+      q.type !== 'open' &&
+      Array.isArray(q.options) &&
+      q.options.length > 0 &&
+      Array.isArray(q.correctAnswers) &&
+      q.correctAnswers.length > 0
+  )
+  return shuffle(pool).slice(0, Math.min(count, pool.length))
 }
 
 export function formatTime(seconds) {
@@ -38,7 +45,8 @@ export function getAnswerText(question) {
   return question.correctAnswers
     .map((k) => {
       const opt = question.options.find((o) => o.key === k)
-      return opt ? `${k.toUpperCase()}. ${opt.text}` : k.toUpperCase()
+      if (opt) return `${k.toUpperCase()}. ${opt.text}`
+      return k.length <= 2 ? k.toUpperCase() : k
     })
     .join(' · ')
 }

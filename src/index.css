@@ -1065,3 +1065,82 @@ body.protected textarea {
 body.protected .protected-content {
   pointer-events: auto;
 }
+
+/* ── Home hero (Quizlet offline) ── */
+.home-hero {
+  position: relative;
+  margin-bottom: clamp(24px, 3vw, 36px);
+  padding: clamp(28px, 4vw, 48px) clamp(20px, 3vw, 40px);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(145deg, rgba(230, 57, 70, 0.12) 0%, rgba(18, 22, 32, 0.95) 45%, rgba(6, 214, 160, 0.06) 100%);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.home-hero-glow {
+  position: absolute;
+  inset: -40% -20% auto auto;
+  width: min(420px, 70vw);
+  height: min(420px, 70vw);
+  background: radial-gradient(circle, rgba(255, 209, 102, 0.15), transparent 65%);
+  pointer-events: none;
+}
+.home-hero-content { position: relative; z-index: 1; max-width: 720px; }
+.home-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin-bottom: 14px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(255, 209, 102, 0.25);
+}
+.home-hero-title {
+  font-size: clamp(1.5rem, 3.5vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+.home-hero-desc {
+  color: var(--text-secondary);
+  font-size: clamp(0.9rem, 1.1vw, 1rem);
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+.home-hero-desc strong { color: var(--text); }
+.home-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.btn-lg {
+  padding: 14px 24px;
+  font-size: 0.95rem;
+  min-height: 52px;
+  border-radius: var(--radius-sm);
+}
+.bank-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--info);
+  background: rgba(76, 201, 240, 0.1);
+  border: 1px solid rgba(76, 201, 240, 0.25);
+}
+.logo-icon--sm {
+  width: 44px;
+  height: 44px;
+  font-size: 13px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}

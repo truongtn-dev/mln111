@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "python scripts/parse_questions.py && vite build",
+    "build": "python scripts/parse_quizlet_docx.py && vite build",
     "preview": "vite preview",
-    "parse": "python scripts/parse_questions.py",
+    "parse": "python scripts/parse_quizlet_docx.py",
     "audit": "python scripts/audit_questions.py"
   },
   "dependencies": {
