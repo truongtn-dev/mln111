@@ -2,13 +2,31 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Shuffle, ThumbsDown, ThumbsUp, RotateCcw } from 'lucide-react'
 import { shuffle, getAnswerText } from '../../utils'
 import { markKnown, markUnknown, getCardProgress, statusLabel, STATUS } from '../../study/progress'
+import { loadSession, patchSessionMode, restoreQuestionList, clampIndex } from '../../study/session'
 import Footer from '../Footer'
 
 export default function FlashcardStudy({ questions, progress, onProgress, onBack }) {
-  const [deck, setDeck] = useState(() => shuffle(questions))
-  const [index, setIndex] = useState(0)
+  const saved = loadSession().flashcard
+
+  const [deck, setDeck] = useState(() => {
+    const restored = restoreQuestionList(questions, saved?.questionIds)
+    return restored || shuffle(questions)
+  })
+  const [index, setIndex] = useState(() => {
+    const restored = restoreQuestionList(questions, saved?.questionIds)
+    if (restored) return clampIndex(saved?.index, restored.length)
+    return 0
+  })
   const [flipped, setFlipped] = useState(false)
-  const [sessionKnown, setSessionKnown] = useState(0)
+  const [sessionKnown, setSessionKnown] = useState(saved?.sessionKnown || 0)
+
+  useEffect(() => {
+    patchSessionMode('flashcard', {
+      questionIds: deck.map((q) => q.id),
+      index,
+      sessionKnown,
+    })
+  }, [deck, index, sessionKnown])
 
   const q = deck[index]
   const cardProg = q ? getCardProgress(progress, q.id) : null
@@ -52,9 +70,15 @@ export default function FlashcardStudy({ questions, progress, onProgress, onBack
   }
 
   const reshuffle = () => {
-    setDeck(shuffle(questions))
+    const next = shuffle(questions)
+    setDeck(next)
     setIndex(0)
     setFlipped(false)
+    patchSessionMode('flashcard', {
+      questionIds: next.map((q) => q.id),
+      index: 0,
+      sessionKnown,
+    })
   }
 
   if (!q) {

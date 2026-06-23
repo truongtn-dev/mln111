@@ -2,14 +2,20 @@ import { useState, useEffect, useMemo } from 'react'
 import { ChevronLeft, CheckCircle, XCircle, ArrowRight } from 'lucide-react'
 import { shuffle, checkAnswer, getAnswerText, isMultiSelect } from '../../utils'
 import { buildLearnQueue, markQuizResult, getStats } from '../../study/progress'
+import { loadSession, patchSessionMode, restoreQuestionList, clampIndex } from '../../study/session'
 import Footer from '../Footer'
 
 export default function LearnStudy({ questions, progress, onProgress, onBack }) {
-  const [queue] = useState(() => buildLearnQueue(questions, progress, 25))
-  const [index, setIndex] = useState(0)
-  const [selected, setSelected] = useState([])
-  const [revealed, setRevealed] = useState(false)
-  const [session, setSession] = useState({ correct: 0, wrong: 0 })
+  const saved = loadSession().learn
+
+  const [queue] = useState(() => {
+    const restored = restoreQuestionList(questions, saved?.questionIds)
+    return restored || buildLearnQueue(questions, progress, 25)
+  })
+  const [index, setIndex] = useState(() => clampIndex(saved?.index, queue.length))
+  const [selected, setSelected] = useState(saved?.selected || [])
+  const [revealed, setRevealed] = useState(Boolean(saved?.revealed))
+  const [session, setSession] = useState(saved?.session || { correct: 0, wrong: 0 })
 
   const q = queue[index]
   const multi = q ? isMultiSelect(q) : false
@@ -19,6 +25,16 @@ export default function LearnStudy({ questions, progress, onProgress, onBack }) 
   )
 
   const stats = getStats(questions, progress)
+
+  useEffect(() => {
+    patchSessionMode('learn', {
+      questionIds: queue.map((item) => item.id),
+      index,
+      selected,
+      revealed,
+      session,
+    })
+  }, [queue, index, selected, revealed, session])
 
   const finalize = (picked) => {
     if (revealed || !q) return

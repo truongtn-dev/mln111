@@ -1,6 +1,6 @@
 import { Timer, Trophy, Zap, GraduationCap, Sparkles, BookMarked } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
-import { loadProgress, getStats } from '../study/progress'
+import { loadProgress, getStats, subscribeProgress } from '../study/progress'
 
 export default function Home({ questions, examPool, meta, history, onStartFlashcard, onStartExam }) {
   const mc = examPool.length
@@ -9,9 +9,8 @@ export default function Home({ questions, examPool, meta, history, onStartFlashc
 
   const [progress, setProgress] = useState(loadProgress)
   useEffect(() => {
-    const sync = () => setProgress(loadProgress())
-    window.addEventListener('focus', sync)
-    return () => window.removeEventListener('focus', sync)
+    setProgress(loadProgress())
+    return subscribeProgress(setProgress)
   }, [])
 
   const studyStats = useMemo(() => getStats(questions, progress), [questions, progress])

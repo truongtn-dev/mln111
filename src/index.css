@@ -1062,8 +1062,17 @@ body.protected textarea {
   -webkit-user-select: text;
   user-select: text;
 }
-body.protected .protected-content {
-  pointer-events: auto;
+.study-persist-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -12px 0 20px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--info);
+  background: rgba(76, 201, 240, 0.08);
+  border: 1px solid rgba(76, 201, 240, 0.2);
 }
 
 /* ── Home hero (Quizlet offline) ── */

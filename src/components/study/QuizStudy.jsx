@@ -1,21 +1,37 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { ChevronLeft, CheckCircle, Trophy } from 'lucide-react'
 import { shuffle, checkAnswer, getAnswerText, isMultiSelect } from '../../utils'
 import { buildLearnQueue, markQuizResult, getStats, loadProgress } from '../../study/progress'
+import { loadSession, patchSessionMode, restoreQuestionList, clampIndex } from '../../study/session'
 import Footer from '../Footer'
 
 const QUIZ_SIZE = 10
 
 export default function QuizStudy({ questions, progress, onProgress, onBack }) {
-  const [quiz] = useState(() => buildLearnQueue(questions, progress, QUIZ_SIZE))
-  const [index, setIndex] = useState(0)
-  const [answers, setAnswers] = useState({})
-  const [pending, setPending] = useState([])
-  const [finished, setFinished] = useState(false)
+  const saved = loadSession().quiz
+
+  const [quiz] = useState(() => {
+    const restored = restoreQuestionList(questions, saved?.questionIds)
+    return restored || buildLearnQueue(questions, progress, QUIZ_SIZE)
+  })
+  const [index, setIndex] = useState(() => clampIndex(saved?.index, quiz.length))
+  const [answers, setAnswers] = useState(saved?.answers || {})
+  const [pending, setPending] = useState(saved?.pending || [])
+  const [finished, setFinished] = useState(Boolean(saved?.finished))
 
   const q = quiz[index]
   const multi = q ? isMultiSelect(q) : false
   const shuffledOpts = useMemo(() => (q ? shuffle(q.options) : []), [q?.id])
+
+  useEffect(() => {
+    patchSessionMode('quiz', {
+      questionIds: quiz.map((item) => item.id),
+      index,
+      answers,
+      pending,
+      finished,
+    })
+  }, [quiz, index, answers, pending, finished])
 
   const finalize = (picked) => {
     const next = { ...answers, [q.id]: picked }
@@ -25,14 +41,14 @@ export default function QuizStudy({ questions, progress, onProgress, onBack }) {
     setPending([])
 
     if (index >= quiz.length - 1) {
-      setTimeout(() => setFinished(true), 400)
+      setFinished(true)
     } else {
       setTimeout(() => setIndex((i) => i + 1), 500)
     }
   }
 
   const handlePick = (key) => {
-    if (answers[q.id] !== undefined) return
+    if (answers[q.id] !== undefined || finished) return
     if (multi) {
       setPending((prev) =>
         prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]

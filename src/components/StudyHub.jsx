@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   BookOpen, Brain, Layers, Zap, RotateCcw, ChevronLeft,
   Sparkles, Target, Clock, CheckCircle2, Circle, GraduationCap,
 } from 'lucide-react'
-import { loadProgress, getStats, resetProgress, filterQuestions, STATUS, getCardProgress,
+import {
+  loadProgress, getStats, resetProgress, filterQuestions, subscribeProgress,
 } from '../study/progress'
+import { loadSession, saveSession, clearStudySession } from '../study/session'
 import FlashcardStudy from './study/FlashcardStudy'
 import LearnStudy from './study/LearnStudy'
 import MatchStudy from './study/MatchStudy'
@@ -46,10 +48,24 @@ const MODES = [
   },
 ]
 
+const VALID_MODES = new Set(MODES.map((m) => m.id))
+
 export default function StudyHub({ questions, onBack }) {
-  const [mode, setMode] = useState(null)
+  const savedHub = loadSession().hub
+  const [mode, setMode] = useState(() =>
+    VALID_MODES.has(savedHub?.mode) ? savedHub.mode : null
+  )
   const [progress, setProgress] = useState(loadProgress)
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState(savedHub?.filter || 'all')
+
+  useEffect(() => {
+    setProgress(loadProgress())
+    return subscribeProgress(setProgress)
+  }, [])
+
+  useEffect(() => {
+    saveSession({ hub: { mode, filter } })
+  }, [mode, filter])
 
   const stats = useMemo(() => getStats(questions, progress), [questions, progress])
   const filtered = useMemo(
@@ -61,8 +77,17 @@ export default function StudyHub({ questions, onBack }) {
 
   const handleReset = () => {
     if (window.confirm('Xóa toàn bộ tiến độ học? Hành động này không thể hoàn tác.')) {
-      setProgress(resetProgress())
+      resetProgress()
+      clearStudySession()
+      setProgress({})
+      setMode(null)
+      setFilter('all')
     }
+  }
+
+  const exitMode = () => {
+    setMode(null)
+    refreshProgress()
   }
 
   if (mode === 'flashcard') {
@@ -71,7 +96,7 @@ export default function StudyHub({ questions, onBack }) {
         questions={filtered.length ? filtered : questions}
         progress={progress}
         onProgress={setProgress}
-        onBack={() => { setMode(null); refreshProgress() }}
+        onBack={exitMode}
       />
     )
   }
@@ -81,7 +106,7 @@ export default function StudyHub({ questions, onBack }) {
         questions={questions}
         progress={progress}
         onProgress={setProgress}
-        onBack={() => { setMode(null); refreshProgress() }}
+        onBack={exitMode}
       />
     )
   }
@@ -91,7 +116,7 @@ export default function StudyHub({ questions, onBack }) {
         questions={questions}
         progress={progress}
         onProgress={setProgress}
-        onBack={() => { setMode(null); refreshProgress() }}
+        onBack={exitMode}
       />
     )
   }
@@ -101,7 +126,7 @@ export default function StudyHub({ questions, onBack }) {
         questions={questions}
         progress={progress}
         onProgress={setProgress}
-        onBack={() => { setMode(null); refreshProgress() }}
+        onBack={exitMode}
       />
     )
   }
@@ -114,6 +139,11 @@ export default function StudyHub({ questions, onBack }) {
         <button className="btn btn-ghost" onClick={handleReset} title="Reset tiến độ">
           <RotateCcw size={16} /> Reset
         </button>
+      </div>
+
+      <div className="study-persist-hint">
+        <Sparkles size={14} />
+        Tiến độ lưu tự động trên trình duyệt — F5 vẫn giữ chỗ đang học
       </div>
 
       {/* Progress dashboard */}

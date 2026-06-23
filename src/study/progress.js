@@ -1,3 +1,5 @@
+import { BANK_ID, getSavedBankId, setSavedBankId } from './session'
+
 const PROGRESS_KEY = 'mln111_study_progress'
 
 export const STATUS = { NEW: 'new', LEARNING: 'learning', MASTERED: 'mastered' }
@@ -8,6 +10,10 @@ function empty() {
 
 export function loadProgress() {
   try {
+    const bank = getSavedBankId()
+    if (bank && bank !== BANK_ID) {
+      return {}
+    }
     return JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}')
   } catch {
     return {}
@@ -15,7 +21,17 @@ export function loadProgress() {
 }
 
 export function saveProgress(data) {
+  setSavedBankId(BANK_ID)
   localStorage.setItem(PROGRESS_KEY, JSON.stringify(data))
+}
+
+/** Đồng bộ tiến độ khi tab khác / F5 cập nhật localStorage */
+export function subscribeProgress(onChange) {
+  const handler = (e) => {
+    if (e.key === PROGRESS_KEY || e.key === null) onChange(loadProgress())
+  }
+  window.addEventListener('storage', handler)
+  return () => window.removeEventListener('storage', handler)
 }
 
 export function getCardProgress(progress, id) {
@@ -117,6 +133,12 @@ export function buildLearnQueue(questions, progress, limit = 20) {
 export function resetProgress() {
   saveProgress({})
   return {}
+}
+
+export function mergeProgress(updater) {
+  const next = typeof updater === 'function' ? updater(loadProgress()) : updater
+  saveProgress(next)
+  return next
 }
 
 export function statusLabel(status) {

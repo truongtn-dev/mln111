@@ -7,15 +7,24 @@ import Results from './components/Results'
 import Footer from './components/Footer'
 import { gradableQuestions } from './data/questions'
 import { loadHistory, saveHistory } from './utils'
+import { loadSession, saveSession } from './study/session'
 
 export default function AppContent({ questions, meta }) {
   const examPool = gradableQuestions(questions)
-  const [screen, setScreen] = useState('home')
+  const [screen, setScreen] = useState(() => {
+    const saved = loadSession().screen
+    return saved === 'study' ? 'study' : 'home'
+  })
   const [history, setHistory] = useState(loadHistory)
   const [examResult, setExamResult] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => { setMenuOpen(false) }, [screen])
+
+  useEffect(() => {
+    const persist = screen === 'results' ? 'home' : screen
+    saveSession({ screen: persist })
+  }, [screen])
 
   const handleExamFinish = (result) => {
     saveHistory(result)
